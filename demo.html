@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDNA — Self-Describing Data Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,600;1,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0b;
+    --bg2: #0f1210;
+    --bg3: #141a16;
+    --panel: #111610;
+    --border: #1e2b20;
+    --border2: #2a3d2c;
+    --amber: #d4a843;
+    --amber-dim: #8a6b28;
+    --amber-glow: rgba(212,168,67,0.12);
+    --green: #4caf6e;
+    --green-dim: #2d6b42;
+    --green-glow: rgba(76,175,110,0.08);
+    --red: #c0392b;
+    --red-dim: #7a241b;
+    --text: #c8d4c4;
+    --text-dim: #6b8068;
+    --text-faint: #3a4e3c;
+    --mono: 'IBM Plex Mono', monospace;
+    --serif: 'DM Serif Display', serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Noise texture */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.4;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2.5rem;
+    height: 52px;
+    background: rgba(10,12,11,0.92);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-logo {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    color: var(--amber);
+    text-transform: uppercase;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--amber); }
+
+  /* ─── HERO ─── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 7rem 2rem 5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.35;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 0%, transparent 100%);
+  }
+
+  .dna-helix {
+    position: absolute;
+    right: -80px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.07;
+  }
+
+  .hero-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .hero-eyebrow::before, .hero-eyebrow::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--amber-dim);
+  }
+
+  .hero-title {
+    font-family: var(--serif);
+    font-size: clamp(3.5rem, 8vw, 7rem);
+    line-height: 1;
+    text-align: center;
+    letter-spacing: -0.02em;
+    color: #e8ede6;
+    margin-bottom: 0.3rem;
+    position: relative;
+  }
+
+  .hero-title em {
+    color: var(--amber);
+    font-style: italic;
+  }
+
+  .hero-subtitle-mono {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-tagline {
+    max-width: 580px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    line-height: 1.9;
+    margin-bottom: 3rem;
+  }
+
+  .hero-tagline strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.4rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid var(--border2);
+    background: var(--panel);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+    background: var(--amber-glow);
+  }
+
+  .btn-primary {
+    background: var(--amber-glow);
+    border-color: var(--amber-dim);
+    color: var(--amber);
+  }
+
+  .btn-primary:hover {
+    background: rgba(212,168,67,0.2);
+    border-color: var(--amber);
+    color: #f0c660;
+  }
+
+  /* ─── SECTIONS ─── */
+  section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 6rem 2rem;
+  }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .section-title {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: #dde8d8;
+    margin-bottom: 1rem;
+    line-height: 1.1;
+  }
+
+  .section-lead {
+    color: var(--text-dim);
+    max-width: 600px;
+    line-height: 1.9;
+    margin-bottom: 3.5rem;
+    font-size: 13px;
+  }
+
+  /* ─── PROBLEM SECTION ─── */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 3rem;
+  }
+
+  .problem-card {
+    background: var(--panel);
+    padding: 1.75rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .problem-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--red-dim);
+  }
+
+  .problem-card.solution::before {
+    background: var(--green-dim);
+  }
+
+  .problem-label {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--red-dim);
+    margin-bottom: 0.75rem;
+  }
+
+  .problem-card.solution .problem-label {
+    color: var(--green-dim);
+  }
+
+  .problem-approach {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+  }
+
+  .problem-weakness {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* ─── PRINCIPLES ─── */
+  .principles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .principle {
+    background: var(--bg2);
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    align-items: start;
+    gap: 0;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .principle:hover, .principle.active {
+    background: var(--bg3);
+  }
+
+  .principle-num {
+    padding: 1.75rem 1.25rem;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--amber-dim);
+    border-right: 1px solid var(--border);
+    text-align: center;
+    font-style: italic;
+    font-family: var(--serif);
+    font-size: 1.6rem;
+    line-height: 1;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 1.5rem;
+  }
+
+  .principle-body {
+    padding: 1.5rem 1.75rem;
+  }
+
+  .principle-name {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+
+  .principle-tagline {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 0;
+  }
+
+  .principle-detail {
+    display: none;
+    padding: 0 1.75rem 1.5rem;
+    grid-column: 2 / 4;
+  }
+
+  .principle.active .principle-detail {
+    display: block;
+  }
+
+  .principle-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    margin-bottom: 1rem;
+    border-left: 2px solid var(--amber-dim);
+    padding-left: 1rem;
+  }
+
+  .pattern-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .pattern-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 1rem;
+  }
+
+  .pattern-label {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    color: var(--green-dim);
+  }
+
+  .pattern-label.anti { color: var(--red-dim); }
+
+  .pattern-text {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+
+  .principle-chevron {
+    padding: 1.5rem 1.25rem;
+    color: var(--text-faint);
+    font-size: 14px;
+    transition: transform 0.2s, color 0.2s;
+    user-select: none;
+  }
+
+  .principle.active .principle-chevron {
+    transform: rotate(90deg);
+    color: var(--amber-dim);
+  }
+
+  /* ─── LOAD SEQUENCE DEMO ─── */
+  .load-demo {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .load-demo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .load-demo-title {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .load-demo-controls {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .load-btn {
+    padding: 0.3rem 0.85rem;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .load-btn:hover {
+    border-color: var(--amber-dim);
+    color: var(--amber);
+  }
+
+  .load-btn.active {
+    border-color: var(--amber);
+    color: var(--amber);
+    background: var(--amber-glow);
+  }
+
+  .load-steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .load-viz {
+    padding: 2rem;
+    border-right: 1px solid var(--border);
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .load-log {
+    padding: 1.5rem;
+    font-size: 11px;
+    line-height: 2;
+    overflow-y: auto;
+    max-height: 380px;
+  }
+
+  .log-line {
+    display: flex;
+    gap: 0.75rem;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.3s, transform 0.3s;
+  }
+
+  .log-line.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .log-step {
+    color: var(--amber-dim);
+    min-width: 24px;
+    font-size: 10px;
+    padding-top: 1px;
+  }
+
+  .log-text { color: var(--text-dim); }
+  .log-text strong { color: var(--text); font-weight: 600; }
+  .log-text .ok { color: var(--green); }
+  .log-text .warn { color: var(--amber); }
+  .log-text .skip { color: var(--text-faint); text-decoration: line-through; }
+
+  /* SVG viz */
+  .viz-svg { width: 100%; max-width: 320px; }
+
+  /* ─── SCORE DEMO ─── */
+  .score-demo {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .score-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .score-body {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+  }
+
+  .score-input-area {
+    padding: 1.5rem;
+    border-right: 1px solid var(--border);
+  }
+
+  .score-input-label {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 0.5rem;
+  }
+
+  .scenario-tabs {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+
+  .scenario-tab {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: none;
+    background: var(--bg2);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .scenario-tab:hover { color: var(--text); }
+
+  .scenario-tab.active {
+    background: var(--amber-glow);
+    color: var(--amber);
+  }
+
+  .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+    font-size: 11px;
+    line-height: 1.8;
+    color: var(--text-dim);
+    min-height: 200px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .code-block .kw { color: #7eb8a8; }
+  .code-block .str { color: #b5945a; }
+  .code-block .num { color: var(--amber-dim); }
+  .code-block .cmt { color: var(--text-faint); font-style: italic; }
+  .code-block .fn { color: #8aab7e; }
+  .code-block .bad { color: var(--red); }
+  .code-block .good { color: var(--green); }
+
+  .score-results {
+    padding: 1.5rem;
+  }
+
+  .score-total {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .score-num {
+    font-family: var(--serif);
+    font-size: 3.5rem;
+    line-height: 1;
+    color: var(--amber);
+  }
+
+  .score-denom {
+    font-size: 1.2rem;
+    color: var(--text-faint);
+    padding-bottom: 0.3rem;
+  }
+
+  .score-label-text {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    padding-bottom: 0.4rem;
+    margin-left: 0.25rem;
+  }
+
+  .score-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .score-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 24px;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .score-row-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .score-bar-track {
+    height: 4px;
+    background: var(--border2);
+    position: relative;
+  }
+
+  .score-bar-fill {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    background: var(--amber-dim);
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .score-bar-fill.full { background: var(--green); }
+  .score-bar-fill.empty { background: var(--red-dim); }
+
+  .score-row-val {
+    font-size: 10px;
+    color: var(--text-faint);
+    text-align: right;
+  }
+
+  .score-priority {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .priority-label {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    margin-bottom: 0.6rem;
+  }
+
+  .priority-item {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin-bottom: 0.4rem;
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .priority-num {
+    color: var(--amber-dim);
+    min-width: 16px;
+    font-size: 10px;
+    padding-top: 1px;
+  }
+
+  /* ─── USE CASES ─── */
+  .usecases-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .usecase-card {
+    background: var(--panel);
+    padding: 1.75rem;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.2s;
+  }
+
+  .usecase-card:hover { background: var(--bg3); }
+
+  .usecase-icon {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    display: block;
+    filter: grayscale(0.4);
+  }
+
+  .usecase-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.05em;
+  }
+
+  .usecase-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+
+  .usecase-score {
+    margin-top: 1rem;
+    display: flex;
+    gap: 3px;
+  }
+
+  .usecase-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--amber-dim);
+    border-radius: 50%;
+  }
+
+  .usecase-dot.dim { background: var(--border2); }
+
+  /* ─── SKILL INSTALL ─── */
+  .install-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .install-tabs {
+    display: flex;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .install-tab {
+    padding: 0.6rem 1.25rem;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .install-tab.active {
+    color: var(--amber);
+    border-bottom-color: var(--amber);
+  }
+
+  .install-content { display: none; padding: 1.5rem 1.75rem; }
+  .install-content.active { display: block; }
+
+  .install-cmd {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 12px;
+    color: var(--green);
+  }
+
+  .install-prompt { color: var(--text-faint); }
+
+  .install-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+
+  .install-note strong { color: var(--text); }
+
+  /* ─── FOOTER ─── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: gap;
+  }
+
+  .footer-logo {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    color: var(--amber-dim);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+  }
+
+  .footer-links a {
+    color: var(--text-faint);
+    text-decoration: none;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--amber-dim); }
+
+  .footer-copy {
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.1em;
+  }
+
+  /* ─── DIVIDER ─── */
+  .full-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-eyebrow { animation: fadeUp 0.6s ease both; }
+  .hero-title { animation: fadeUp 0.7s 0.1s ease both; }
+  .hero-subtitle-mono { animation: fadeUp 0.7s 0.2s ease both; }
+  .hero-tagline { animation: fadeUp 0.7s 0.3s ease both; }
+  .hero-cta { animation: fadeUp 0.7s 0.4s ease both; }
+
+  @keyframes pulse-amber {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .pulse { animation: pulse-amber 2s ease-in-out infinite; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 700px) {
+    .load-steps { grid-template-columns: 1fr; }
+    .load-viz { border-right: none; border-bottom: 1px solid var(--border); min-height: 220px; }
+    .score-body { grid-template-columns: 1fr; }
+    .score-results { border-top: 1px solid var(--border); }
+    .pattern-grid { grid-template-columns: 1fr; }
+    nav { padding: 0 1rem; }
+    .nav-links { gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="nav-logo">SDNA</span>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#principles">Principles</a></li>
+    <li><a href="#demo">Demo</a></li>
+    <li><a href="#usecases">Use Cases</a></li>
+    <li><a href="#install">Skill</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-grid"></div>
+
+  <!-- animated DNA helix -->
+  <svg class="dna-helix" width="320" height="600" viewBox="0 0 320 600">
+    <g id="helix"></g>
+  </svg>
+
+  <div class="hero-eyebrow">Self-Describing Data Architecture</div>
+  <h1 class="hero-title">The File Carries<br>Its Own <em>DNA</em></h1>
+  <p class="hero-subtitle-mono">Struct DNA — Generalised Methodology</p>
+  <p class="hero-tagline">
+    <strong>The data you write today will be read by a version of your software that does not exist yet.</strong>
+    SDNA is a five-principle methodology distilled from Blender's legendary file format — the system that lets a file saved in 1999 open perfectly in 2026.
+  </p>
+  <div class="hero-cta">
+    <a href="#principles" class="btn btn-primary">→ Explore the Principles</a>
+    <a href="#install" class="btn">↓ Install the Skill</a>
+    <a href="https://github.com/MushroomFleet/SDNA-skill" class="btn" target="_blank">⌥ GitHub</a>
+  </div>
+</div>
+
+<hr class="full-divider">
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="section-label">The Core Problem</div>
+  <h2 class="section-title">Why Data Formats Break</h2>
+  <p class="section-lead">Every conventional approach to data versioning has a fatal weakness. SDNA's answer is architecturally different: embed the schema in the data itself, then reconcile on load.</p>
+
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="problem-label">❌ Anti-pattern</div>
+      <div class="problem-approach">Fixed Binary Schemas</div>
+      <div class="problem-weakness">Break silently the moment any struct changes. A single added field shifts every byte offset downstream.</div>
+    </div>
+    <div class="problem-card">
+      <div class="problem-label">❌ Anti-pattern</div>
+      <div class="problem-approach">Version Numbers Only</div>
+      <div class="problem-weakness">Require exhaustive migration code for every version pair. O(N²) complexity as versions accumulate.</div>
+    </div>
+    <div class="problem-card">
+      <div class="problem-label">❌ Anti-pattern</div>
+      <div class="problem-approach">External Schema Registries</div>
+      <div class="problem-weakness">Create external dependencies. Registries rot, go offline, or diverge from the actual data in production.</div>
+    </div>
+    <div class="problem-card">
+      <div class="problem-label">❌ Anti-pattern</div>
+      <div class="problem-approach">Human-Readable (JSON/XML)</div>
+      <div class="problem-weakness">Verbose and slow — and still break when field names change or structural semantics shift across versions.</div>
+    </div>
+    <div class="problem-card">
+      <div class="problem-label">❌ Anti-pattern</div>
+      <div class="problem-approach">"Never Change the Schema"</div>
+      <div class="problem-weakness">Impossible at any meaningful scale. Requirements change. Optimisations require restructuring. Features evolve.</div>
+    </div>
+    <div class="problem-card solution">
+      <div class="problem-label">✓ SDNA Answer</div>
+      <div class="problem-approach">Embed the Schema in the Data</div>
+      <div class="problem-weakness">The artifact carries its own blueprint. The reader discovers layout at load time rather than assuming it at compile time. Reconcile on load.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="full-divider">
+
+<!-- PRINCIPLES -->
+<section id="principles">
+  <div class="section-label">Methodology</div>
+  <h2 class="section-title">The Five Principles</h2>
+  <p class="section-lead">Each principle addresses a specific failure mode in data format evolution. Click any principle to expand the implementation pattern and anti-pattern.</p>
+
+  <div class="principles-list">
+
+    <div class="principle" onclick="togglePrinciple(this)">
+      <div class="principle-num">1</div>
+      <div class="principle-body">
+        <div class="principle-name">Self-Description</div>
+        <div class="principle-tagline">The artifact carries its own schema; the reader discovers layout, it does not assume it</div>
+      </div>
+      <div class="principle-chevron">▶</div>
+      <div class="principle-detail">
+        <p class="principle-desc">Every persisted data artifact carries a complete description of its own structure — what named fields exist, what type each field is, what the size and shape of arrays and references are. This description is written at <strong>save time</strong>, not read time.</p>
+        <div class="pattern-grid">
+          <div class="pattern-block">
+            <div class="pattern-label">✓ Implementation Pattern</div>
+            <div class="pattern-text">Embed a compact schema block alongside your data. The schema block is always written first on save and always parsed first on load. The reader builds a field map from the artifact itself before touching any data.</div>
+          </div>
+          <div class="pattern-block">
+            <div class="pattern-label anti">✗ Anti-Pattern</div>
+            <div class="pattern-text">Assuming the reader shares the writer's compiled struct definitions. This is only safe within a single binary release — the moment versions diverge, silent corruption begins.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="principle" onclick="togglePrinciple(this)">
+      <div class="principle-num">2</div>
+      <div class="principle-body">
+        <div class="principle-name">Name-Based Field Mapping</div>
+        <div class="principle-tagline">Fields are matched by name across versions, never by byte offset or positional index</div>
+      </div>
+      <div class="principle-chevron">▶</div>
+      <div class="principle-detail">
+        <p class="principle-desc">When the reader reconciles its current schema against the artifact's embedded schema, it resolves fields by symbolic name. Fields can be reordered freely. New fields get safe defaults. Removed fields are skipped cleanly. Fields present in both are mapped directly.</p>
+        <div class="pattern-grid">
+          <div class="pattern-block">
+            <div class="pattern-label">✓ Implementation Pattern</div>
+            <div class="pattern-text">Store field names as strings (or interned string IDs) in the schema block. The loader iterates the artifact's field list and resolves each by name lookup — not positional assumption.</div>
+          </div>
+          <div class="pattern-block">
+            <div class="pattern-label anti">✗ Anti-Pattern</div>
+            <div class="pattern-text">Positional/index-based deserialisation: "field 3 is always the Y coordinate." A single insertion anywhere breaks everything downstream — every field after the insertion reads wrong data.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="principle" onclick="togglePrinciple(this)">
+      <div class="principle-num">3</div>
+      <div class="principle-body">
+        <div class="principle-name">Incremental Versioning Patches</div>
+        <div class="principle-tagline">Migrations are a chain of small, ordered, permanent patch functions</div>
+      </div>
+      <div class="principle-chevron">▶</div>
+      <div class="principle-detail">
+        <p class="principle-desc">Name-based mapping handles easy cases. But deep structural changes — a scalar becoming an array, degrees becoming radians, a nested struct flattened — require active data transformation. These are expressed as a permanent, ordered chain of patch functions applied from the artifact's version to the current one.</p>
+        <div class="pattern-grid">
+          <div class="pattern-block">
+            <div class="pattern-label">✓ Implementation Pattern</div>
+            <div class="pattern-text">Monotonically increasing version integer. A registry of patch functions indexed by version. On load, apply patches from artifact_version to current_version in sequence. Patches accumulate — never collapse or remove.</div>
+          </div>
+          <div class="pattern-block">
+            <div class="pattern-label anti">✗ Anti-Pattern</div>
+            <div class="pattern-text">A single migrate(from, to, data) function with a large switch statement. Becomes unmaintainable. Also: collapsing old patches into a "legacy" path — removes the ability to load any artifact older than the collapse point.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="principle" onclick="togglePrinciple(this)">
+      <div class="principle-num">4</div>
+      <div class="principle-body">
+        <div class="principle-name">Graceful Degradation</div>
+        <div class="principle-tagline">Unknown blocks and fields are skipped cleanly; partial reads are valid</div>
+      </div>
+      <div class="principle-chevron">▶</div>
+      <div class="principle-detail">
+        <p class="principle-desc">When an older reader encounters a newer artifact, it will find blocks and fields it has no knowledge of. The correct behaviour: skip unknown blocks entirely, skip unknown fields within known structs using embedded schema sizes, and load what is understood. This property must be <strong>designed in</strong> — it is not automatic.</p>
+        <div class="pattern-grid">
+          <div class="pattern-block">
+            <div class="pattern-label">✓ Implementation Pattern</div>
+            <div class="pattern-text">Every block stores its own byte length in the header — unknown blocks skippable in O(1). Field sizes come from the embedded schema, so unknown fields can also be skipped safely without knowing their content.</div>
+          </div>
+          <div class="pattern-block">
+            <div class="pattern-label anti">✗ Anti-Pattern</div>
+            <div class="pattern-text">Treating an unknown block type as a fatal error. This makes every new writer a breaking change for every old reader — an enormous compatibility tax paid forward in perpetuity.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="principle" onclick="togglePrinciple(this)">
+      <div class="principle-num">5</div>
+      <div class="principle-body">
+        <div class="principle-name">Two-Layer Architecture</div>
+        <div class="principle-tagline">Storage schema and public interface schema are separated by a stable mapping layer</div>
+      </div>
+      <div class="principle-chevron">▶</div>
+      <div class="principle-detail">
+        <p class="principle-desc">Blender calls these DNA (storage) and RNA (interface). The storage schema evolves freely to match implementation needs. The public interface schema evolves conservatively to preserve compatibility for consumers. A mapping layer translates between them — internal refactors never break the public API.</p>
+        <div class="pattern-grid">
+          <div class="pattern-block">
+            <div class="pattern-label">✓ Implementation Pattern</div>
+            <div class="pattern-text">Artifact → (SDNA load + patches) → Internal representation (evolves freely) → (stable mapping layer) → Public API (evolves conservatively). Consumers always see the stable layer, never the storage structs.</div>
+          </div>
+          <div class="pattern-block">
+            <div class="pattern-label anti">✗ Anti-Pattern</div>
+            <div class="pattern-text">Exposing internal storage structs directly as the public API. Any internal change — renaming a field, splitting a struct, changing a type — immediately becomes a breaking change for every consumer.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="full-divider">
+
+<!-- LOAD SEQUENCE DEMO -->
+<section id="demo">
+  <div class="section-label">Interactive Demo</div>
+  <h2 class="section-title">The Load Sequence</h2>
+  <p class="section-lead">Watch how an SDNA-compliant loader handles an artifact from an older version. Every step is defined by the methodology — none rely on the reader "already knowing" the structure.</p>
+
+  <div class="load-demo">
+    <div class="load-demo-header">
+      <span class="load-demo-title">SDNA Load Sequence — Artifact v2 → Current v5</span>
+      <div class="load-demo-controls">
+        <button class="load-btn active" id="btn-run" onclick="runSequence()">▶ Run</button>
+        <button class="load-btn" id="btn-reset" onclick="resetSequence()">↺ Reset</button>
+      </div>
+    </div>
+    <div class="load-steps">
+      <div class="load-viz">
+        <svg class="viz-svg" id="load-svg" viewBox="0 0 300 340" xmlns="http://www.w3.org/2000/svg">
+          <!-- Artifact block -->
+          <rect x="80" y="10" width="140" height="50" fill="#0f1210" stroke="#2a3d2c" stroke-width="1"/>
+          <text x="150" y="29" text-anchor="middle" fill="#6b8068" font-family="IBM Plex Mono" font-size="9" letter-spacing="2">ARTIFACT</text>
+          <text x="150" y="45" text-anchor="middle" fill="#d4a843" font-family="IBM Plex Mono" font-size="10" font-weight="600">v2</text>
+
+          <!-- Arrow 1 -->
+          <line x1="150" y1="60" x2="150" y2="90" stroke="#2a3d2c" stroke-width="1" id="arrow1"/>
+          <polygon points="150,94 146,86 154,86" fill="#2a3d2c" id="arrow1h"/>
+
+          <!-- SDNA block -->
+          <rect x="60" y="94" width="180" height="44" fill="#0a0c0b" stroke="#1e2b20" stroke-width="1" id="dna-block"/>
+          <text x="150" y="113" text-anchor="middle" fill="#6b8068" font-family="IBM Plex Mono" font-size="8" letter-spacing="2" id="dna-label1">EMBEDDED SCHEMA</text>
+          <text x="150" y="128" text-anchor="middle" fill="#4caf6e" font-family="IBM Plex Mono" font-size="9" id="dna-label2">DNA1 block parsed</text>
+
+          <!-- Arrow 2 -->
+          <line x1="150" y1="138" x2="150" y2="168" stroke="#2a3d2c" stroke-width="1" id="arrow2"/>
+          <polygon points="150,172 146,164 154,164" fill="#2a3d2c" id="arrow2h"/>
+
+          <!-- Field mapping block -->
+          <rect x="40" y="172" width="220" height="56" fill="#0a0c0b" stroke="#1e2b20" stroke-width="1" id="map-block"/>
+          <text x="150" y="191" text-anchor="middle" fill="#6b8068" font-family="IBM Plex Mono" font-size="8" letter-spacing="2">NAME-BASED MAPPING</text>
+          <text x="90" y="212" text-anchor="middle" fill="#4caf6e" font-family="IBM Plex Mono" font-size="9" id="map-found">found: 8 fields</text>
+          <text x="210" y="212" text-anchor="middle" fill="#d4a843" font-family="IBM Plex Mono" font-size="9" id="map-new">new: 3 defaults</text>
+
+          <!-- Arrow 3 -->
+          <line x1="150" y1="228" x2="150" y2="258" stroke="#2a3d2c" stroke-width="1" id="arrow3"/>
+          <polygon points="150,262 146,254 154,254" fill="#2a3d2c" id="arrow3h"/>
+
+          <!-- Patch chain -->
+          <rect x="50" y="262" width="200" height="50" fill="#0a0c0b" stroke="#1e2b20" stroke-width="1" id="patch-block"/>
+          <text x="150" y="281" text-anchor="middle" fill="#6b8068" font-family="IBM Plex Mono" font-size="8" letter-spacing="2">PATCH CHAIN</text>
+          <text x="150" y="297" text-anchor="middle" fill="#d4a843" font-family="IBM Plex Mono" font-size="9" id="patch-label">v2→v3 → v3→v4 → v4→v5</text>
+
+          <!-- all initially dimmed -->
+        </svg>
+      </div>
+
+      <div class="load-log" id="load-log">
+        <div class="log-line" id="ll0">
+          <span class="log-step">1.</span>
+          <span class="log-text">Reading artifact header — <strong>version: 2</strong>, ptr_size: 8, endian: LE</span>
+        </div>
+        <div class="log-line" id="ll1">
+          <span class="log-step">2.</span>
+          <span class="log-text">Locating <strong>DNA1</strong> block at byte offset 0x3f8…</span>
+        </div>
+        <div class="log-line" id="ll2">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="ok">✓</span> Parsed embedded schema — 4 structs, 11 fields, 6 types</span>
+        </div>
+        <div class="log-line" id="ll3">
+          <span class="log-step">3.</span>
+          <span class="log-text">Diffing embedded schema against current (v5) schema…</span>
+        </div>
+        <div class="log-line" id="ll4">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="ok">✓</span> <strong>8 fields</strong> matched by name</span>
+        </div>
+        <div class="log-line" id="ll5">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="warn">→</span> <strong>3 new fields</strong> initialised with safe defaults</span>
+        </div>
+        <div class="log-line" id="ll6">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="skip">removed: legacy_ptr (2 fields)</span></span>
+        </div>
+        <div class="log-line" id="ll7">
+          <span class="log-step">4.</span>
+          <span class="log-text">Processing 6 data blocks — name-based field resolution…</span>
+        </div>
+        <div class="log-line" id="ll8">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="ok">✓</span> PlayerData — all fields resolved</span>
+        </div>
+        <div class="log-line" id="ll9">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="ok">✓</span> WorldChunk — 1 unknown field skipped (O(1))</span>
+        </div>
+        <div class="log-line" id="ll10">
+          <span class="log-step">5.</span>
+          <span class="log-text">Running versioning patch chain: <strong>v2→v3</strong>…</span>
+        </div>
+        <div class="log-line" id="ll11">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="ok">✓</span> rotation_deg → rotation_rad (converted)</span>
+        </div>
+        <div class="log-line" id="ll12">
+          <span class="log-step"> </span>
+          <span class="log-text">Running patch: <strong>v3→v4</strong>…</span>
+        </div>
+        <div class="log-line" id="ll13">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="ok">✓</span> health (scalar) → health_vec3 (array)</span>
+        </div>
+        <div class="log-line" id="ll14">
+          <span class="log-step"> </span>
+          <span class="log-text">Running patch: <strong>v4→v5</strong>…</span>
+        </div>
+        <div class="log-line" id="ll15">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="ok">✓</span> New index_map field populated from legacy_ptr</span>
+        </div>
+        <div class="log-line" id="ll16">
+          <span class="log-step">6.</span>
+          <span class="log-text">Relocating <strong>14 references</strong> to current address space…</span>
+        </div>
+        <div class="log-line" id="ll17">
+          <span class="log-step">7.</span>
+          <span class="log-text">Handing to public interface layer (RNA)…</span>
+        </div>
+        <div class="log-line" id="ll18">
+          <span class="log-step"> </span>
+          <span class="log-text"><span class="ok">✓ Load complete.</span> Artifact upgraded v2 → v5 without data loss.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="full-divider">
+
+<!-- SCORE DEMO -->
+<section>
+  <div class="section-label">The Review Skill</div>
+  <h2 class="section-title">What an Assessment Looks Like</h2>
+  <p class="section-lead">The SDNA Review skill scores any codebase or plan against the five principles, identifies anti-patterns in the actual submitted code, and produces prioritised alignment instructions.</p>
+
+  <div class="score-demo">
+    <div class="score-header">
+      <span class="load-demo-title">SDNA Alignment Report — Example Scenarios</span>
+    </div>
+    <div class="score-body">
+      <div class="score-input-area">
+        <div class="score-input-label">Scenario</div>
+        <div class="scenario-tabs">
+          <button class="scenario-tab active" onclick="setScenario(0, this)">Game Save</button>
+          <button class="scenario-tab" onclick="setScenario(1, this)">Config File</button>
+          <button class="scenario-tab" onclick="setScenario(2, this)">API Protocol</button>
+        </div>
+        <div class="code-block" id="scenario-code"></div>
+      </div>
+      <div class="score-results">
+        <div class="score-total">
+          <span class="score-num" id="score-total-num">4</span>
+          <span class="score-denom">/15</span>
+          <span class="score-label-text">SDNA Score</span>
+        </div>
+        <div class="score-bars" id="score-bars"></div>
+        <div class="score-priority">
+          <div class="priority-label">Top Priorities</div>
+          <div id="score-priorities"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="full-divider">
+
+<!-- USE CASES -->
+<section id="usecases">
+  <div class="section-label">Applications</div>
+  <h2 class="section-title">Where SDNA Applies</h2>
+  <p class="section-lead">Any system that persists structured data across software versions is a candidate. The higher the data's expected lifetime or the broader its reader ecosystem, the more SDNA compliance is worth.</p>
+
+  <div class="usecases-grid">
+    <div class="usecase-card">
+      <span class="usecase-icon">🎮</span>
+      <div class="usecase-name">Game Save Files</div>
+      <div class="usecase-desc">Save games written at v1.0 must remain playable at v2.5. Player data structures evolve with every patch cycle.</div>
+      <div class="usecase-score">
+        <div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div>
+      </div>
+    </div>
+    <div class="usecase-card">
+      <span class="usecase-icon">🗄️</span>
+      <div class="usecase-name">Database Schemas</div>
+      <div class="usecase-desc">Migrations that run forward-only leave older clients unable to read new records. Self-description enables bidirectional tolerance.</div>
+      <div class="usecase-score">
+        <div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot dim"></div>
+      </div>
+    </div>
+    <div class="usecase-card">
+      <span class="usecase-icon">🌐</span>
+      <div class="usecase-name">Network Protocols</div>
+      <div class="usecase-desc">Clients and servers rarely update in lockstep. Graceful degradation means a v3 client can still talk to a v5 server without crashing.</div>
+      <div class="usecase-score">
+        <div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot dim"></div>
+      </div>
+    </div>
+    <div class="usecase-card">
+      <span class="usecase-icon">📦</span>
+      <div class="usecase-name">Asset Pipelines</div>
+      <div class="usecase-desc">3D models, textures, and scene files are authored in one tool and consumed by another. Schema drift between tools causes silent data loss.</div>
+      <div class="usecase-score">
+        <div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div>
+      </div>
+    </div>
+    <div class="usecase-card">
+      <span class="usecase-icon">⚙️</span>
+      <div class="usecase-name">Configuration Formats</div>
+      <div class="usecase-desc">Config files outlive the software versions that wrote them. Self-description prevents "unknown key" errors as features are added and removed.</div>
+      <div class="usecase-score">
+        <div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot dim"></div><div class="usecase-dot dim"></div>
+      </div>
+    </div>
+    <div class="usecase-card">
+      <span class="usecase-icon">🔬</span>
+      <div class="usecase-name">Scientific Data Archives</div>
+      <div class="usecase-desc">Research data may be accessed decades after it is written. The schema must travel with the data — the original software is long gone.</div>
+      <div class="usecase-score">
+        <div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div><div class="usecase-dot"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="full-divider">
+
+<!-- INSTALL -->
+<section id="install">
+  <div class="section-label">Claude Code Skill</div>
+  <h2 class="section-title">Install the SDNA Review Skill</h2>
+  <p class="section-lead">The skill assesses any codebase or implementation plan against the five principles and produces a scored <code>README_SDNA.md</code> with prioritised, ecosystem-specific alignment instructions.</p>
+
+  <div class="install-block">
+    <div class="install-tabs">
+      <button class="install-tab active" onclick="setInstallTab(0, this)">Install</button>
+      <button class="install-tab" onclick="setInstallTab(1, this)">Trigger Phrases</button>
+      <button class="install-tab" onclick="setInstallTab(2, this)">Output</button>
+    </div>
+
+    <div class="install-content active" id="itab-0">
+      <div class="install-cmd">
+        <span class="install-prompt">$</span>
+        <span>claude skill install SDNA-review.skill</span>
+      </div>
+      <p class="install-note">
+        Download <strong>SDNA-review.skill</strong> from the <a href="https://github.com/MushroomFleet/SDNA-skill" style="color:var(--amber-dim)">GitHub repository</a> and install it into Claude Code. The skill bundles the full methodology reference — it loads fresh on every invocation, grounding all scores in the documented principles rather than model memory.
+      </p>
+    </div>
+
+    <div class="install-content" id="itab-1">
+      <p class="install-note" style="margin-bottom:1rem">The skill triggers automatically on any of these phrases, or when you submit code with a versioning/compatibility problem:</p>
+      <div style="display:flex;flex-direction:column;gap:0.4rem">
+        <div class="install-cmd" style="margin-bottom:0"><span class="install-prompt">›</span><span>"SDNA review my save system"</span></div>
+        <div class="install-cmd" style="margin-bottom:0"><span class="install-prompt">›</span><span>"Assess this against SDNA principles"</span></div>
+        <div class="install-cmd" style="margin-bottom:0"><span class="install-prompt">›</span><span>"My config files break between versions — check alignment"</span></div>
+        <div class="install-cmd" style="margin-bottom:0"><span class="install-prompt">›</span><span>"How do I make this format backward compatible?"</span></div>
+        <div class="install-cmd" style="margin-bottom:0"><span class="install-prompt">›</span><span>"Check SDNA compliance on this serialisation plan"</span></div>
+      </div>
+    </div>
+
+    <div class="install-content" id="itab-2">
+      <p class="install-note" style="margin-bottom:1rem">The skill produces <strong>README_SDNA.md</strong> containing:</p>
+      <div class="code-block" style="min-height:auto">
+<span class="cmt"># SDNA Alignment Report — YourProject</span>
+
+<span class="kw">## Score Overview</span>
+<span class="str">Self-Description      </span> <span class="good">3/3  ✓ Aligned</span>
+<span class="str">Name-Based Mapping    </span> <span class="warn">1/3  ⚠ Partial</span>
+<span class="str">Incremental Versioning</span> <span class="bad">0/3  ✗ Missing</span>
+<span class="str">Graceful Degradation  </span> <span class="warn">2/3  ⚠ Partial</span>
+<span class="str">Two-Layer Architecture</span> <span class="good">3/3  ✓ Aligned</span>
+<span class="kw">Total                    9/15</span>
+
+<span class="kw">## Prioritised Alignment Instructions</span>
+<span class="cmt">### Priority 1 — Incremental Versioning (your migrate()</span>
+<span class="cmt">### function is a monolithic switch — replace with...)</span></div>
+    </div>
+  </div>
+</section>
+
+<hr class="full-divider">
+
+<footer>
+  <div class="footer-logo">SDNA</div>
+  <ul class="footer-links">
+    <li><a href="https://github.com/MushroomFleet/SDNA-skill" target="_blank">GitHub</a></li>
+    <li><a href="#principles">Principles</a></li>
+    <li><a href="#install">Skill</a></li>
+  </ul>
+  <div class="footer-copy">Drift Johnson · MushroomFleet</div>
+</footer>
+
+<script>
+// ─── HELIX ───
+(function() {
+  const g = document.getElementById('helix');
+  const N = 28;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N-1);
+    const y = 30 + t * 540;
+    const x1 = 160 + Math.sin(t * Math.PI * 4) * 80;
+    const x2 = 160 - Math.sin(t * Math.PI * 4) * 80;
+    // strand dots
+    const c1 = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c1.setAttribute('cx', x1); c1.setAttribute('cy', y);
+    c1.setAttribute('r', 3); c1.setAttribute('fill', '#8a6b28');
+    c1.setAttribute('opacity', 0.6 + Math.abs(Math.sin(t*Math.PI*4))*0.4);
+    g.appendChild(c1);
+    const c2 = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c2.setAttribute('cx', x2); c2.setAttribute('cy', y);
+    c2.setAttribute('r', 3); c2.setAttribute('fill', '#2d6b42');
+    c2.setAttribute('opacity', 0.6 + Math.abs(Math.sin(t*Math.PI*4))*0.4);
+    g.appendChild(c2);
+    // rungs
+    if (i % 3 === 1) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y);
+      line.setAttribute('x2', x2); line.setAttribute('y2', y);
+      line.setAttribute('stroke','#1e2b20'); line.setAttribute('stroke-width','1');
+      g.appendChild(line);
+    }
+  }
+})();
+
+// ─── PRINCIPLES ───
+function togglePrinciple(el) {
+  const wasActive = el.classList.contains('active');
+  document.querySelectorAll('.principle').forEach(p => p.classList.remove('active'));
+  if (!wasActive) el.classList.add('active');
+}
+
+// ─── LOAD SEQUENCE ───
+let seqRunning = false;
+let seqTimeout = null;
+
+function resetSequence() {
+  seqRunning = false;
+  clearTimeout(seqTimeout);
+  for (let i = 0; i <= 18; i++) {
+    const el = document.getElementById('ll' + i);
+    if (el) el.classList.remove('visible');
+  }
+  document.getElementById('btn-run').classList.add('active');
+}
+
+function runSequence() {
+  if (seqRunning) return;
+  resetSequence();
+  seqRunning = true;
+  document.getElementById('btn-run').classList.remove('active');
+
+  const delays = [0,400,800,1300,1700,2100,2500,3000,3400,3800,4400,4900,5400,5900,6400,6900,7500,8000,8600];
+  delays.forEach((d, i) => {
+    seqTimeout = setTimeout(() => {
+      const el = document.getElementById('ll' + i);
+      if (el) el.classList.add('visible');
+    }, d);
+  });
+}
+
+// Auto-run on first scroll into view
+const demoSection = document.getElementById('demo');
+let demoTriggered = false;
+const obs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting && !demoTriggered) {
+    demoTriggered = true;
+    setTimeout(runSequence, 400);
+  }
+}, { threshold: 0.3 });
+obs.observe(demoSection);
+
+// ─── SCENARIOS ───
+const scenarios = [
+  {
+    code: `<span class="cmt">// Game save — C# Unity</span>
+<span class="kw">class</span> <span class="fn">SaveGame</span> {
+  <span class="kw">public</span> <span class="kw">void</span> <span class="fn">Save</span>(BinaryWriter w) {
+    w.Write(player.health);   <span class="cmt">// field 0</span>
+    w.Write(player.level);    <span class="cmt">// field 1</span>
+    w.Write(player.posX);     <span class="cmt">// field 2</span>
+    w.Write(player.posY);     <span class="cmt">// field 3</span>
+  }
+  <span class="kw">public void</span> <span class="fn">Load</span>(BinaryReader r) {
+    player.health = r.ReadFloat(); <span class="cmt">// positional!</span>
+    player.level  = r.ReadInt();
+    player.posX   = r.ReadFloat();
+    player.posY   = r.ReadFloat();
+  }
+}`,
+    scores: [0, 0, 1, 0, 1],
+    total: 2,
+    priorities: [
+      'Add embedded schema block — write field names + types at save time',
+      'Replace positional reads with name-based field lookup',
+      'Build an incremental patch chain for structural migrations',
+    ]
+  },
+  {
+    code: `<span class="cmt"># Config loader — Python</span>
+<span class="kw">import</span> json
+
+<span class="kw">def</span> <span class="fn">load_config</span>(path):
+  <span class="kw">with</span> open(path) <span class="kw">as</span> f:
+    data = json.load(f)
+  
+  <span class="cmt"># hard-coded key expectations</span>
+  <span class="kw">return</span> {
+    <span class="str">"debug"</span>: data[<span class="str">"debug"</span>],     <span class="cmt"># KeyError if missing</span>
+    <span class="str">"port"</span>:  data[<span class="str">"port"</span>],
+    <span class="str">"host"</span>:  data[<span class="str">"host"</span>],
+  }
+  <span class="cmt"># no version, no defaults, no migration</span>`,
+    scores: [1, 2, 0, 1, 0],
+    total: 4,
+    priorities: [
+      'Add a "version" field and an incremental patch chain',
+      'Use .get(key, default) throughout — graceful field absence',
+      'Separate the raw config dict from the validated model object',
+    ]
+  },
+  {
+    code: `<span class="cmt">// API protocol — TypeScript</span>
+<span class="kw">interface</span> <span class="fn">MessageV2</span> {
+  version: <span class="num">2</span>;
+  type: <span class="kw">string</span>;
+  payload: <span class="kw">unknown</span>;
+  schema: Record<<span class="kw">string</span>, <span class="kw">string</span>>; <span class="cmt">// ✓ embedded</span>
+}
+
+<span class="kw">function</span> <span class="fn">decode</span>(msg: MessageV2) {
+  <span class="kw">const</span> fields = resolveByName(   <span class="cmt">// ✓ name-based</span>
+    msg.schema, msg.payload);
+  patchChain[msg.version]?.(fields); <span class="cmt">// ✓ incremental</span>
+  <span class="kw">return</span> toPublicModel(fields);  <span class="cmt">// ✓ two-layer</span>
+  <span class="cmt">// but: unknown types throw ✗</span>
+}`,
+    scores: [3, 3, 2, 1, 3],
+    total: 12,
+    priorities: [
+      'Graceful degradation: unknown message types must skip, not throw',
+      'Complete the patch chain — ensure no gaps between registered versions',
+    ]
+  }
+];
+
+const principleNames = [
+  'Self-Description',
+  'Name-Based Mapping',
+  'Incremental Versioning',
+  'Graceful Degradation',
+  'Two-Layer Arch.',
+];
+
+function setScenario(idx, btn) {
+  document.querySelectorAll('.scenario-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  const s = scenarios[idx];
+  document.getElementById('scenario-code').innerHTML = s.code;
+  document.getElementById('score-total-num').textContent = s.total;
+
+  const barsEl = document.getElementById('score-bars');
+  barsEl.innerHTML = '';
+  s.scores.forEach((sc, i) => {
+    const pct = (sc / 3) * 100;
+    const cls = sc === 3 ? 'full' : sc === 0 ? 'empty' : '';
+    barsEl.innerHTML += `
+      <div class="score-row">
+        <div class="score-row-label">${principleNames[i]}</div>
+        <div class="score-bar-track"><div class="score-bar-fill ${cls}" style="width:${pct}%"></div></div>
+        <div class="score-row-val">${sc}/3</div>
+      </div>`;
+  });
+
+  const priEl = document.getElementById('score-priorities');
+  priEl.innerHTML = '';
+  s.priorities.forEach((p, i) => {
+    priEl.innerHTML += `<div class="priority-item"><span class="priority-num">${i+1}.</span><span>${p}</span></div>`;
+  });
+}
+
+// init
+setScenario(0, document.querySelector('.scenario-tab'));
+
+// ─── INSTALL TABS ───
+function setInstallTab(idx, btn) {
+  document.querySelectorAll('.install-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.install-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('itab-' + idx).classList.add('active');
+}
+</script>
+
+</body>
+</html>
